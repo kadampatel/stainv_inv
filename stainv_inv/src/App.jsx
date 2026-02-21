@@ -21,7 +21,7 @@ const InvestorPublicProfile = lazy(() => import('./investorpublicprofile'));
 const ChatPage = lazy(() => import('./chatpage'));
 const PitchBroadcast = lazy(() => import('./pitchbroadcast'));
 const StartupPitchTerminal = lazy(() => import('./startuppitchterminal'));
-const PitchCreation = lazy(() => import('./PitchCreation'));
+const PitchCreation = lazy(() => import('./pitchcreation')); // CORRECT (if file is lowercase)
 const AboutPage = lazy(() => import('./aboutpage'));
 const ServicePage = lazy(() => import('./ServicePage'));
 const ContactPage = lazy(() => import('./contactpage'));
