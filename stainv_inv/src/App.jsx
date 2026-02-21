@@ -23,7 +23,7 @@ import PitchBroadcast from './pitchbroadcast';
 import StartupPitchTerminal from './StartupPitchTerminal';
 import PitchCreation from './pitchcreation';
 import AboutPage from './aboutpage';
-import ServicePage from './ServicePage';
+import ServicePage from './servicepage';
 import ContactPage from './contactpage';
 
 // Institutional Placeholder for Legal/Privacy
