@@ -2,9 +2,10 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
 // 1. Interaction Provider - The central nervous system for likes/connections
+// Note: Keeping this lowercase to match your verified file naming convention
 import { InteractionProvider } from './investorinteraction';
 
-// 2. LAZY LOAD COMPONENTS
+// 2. LAZY LOAD COMPONENTS - ALL CONVERTED TO LOWERCASE FOR VERCEL COMPATIBILITY
 const LandingPage = lazy(() => import('./landingpage'));
 const StartupVerification = lazy(() => import('./startupverification'));
 const InvestorVerification = lazy(() => import('./investorverification'));
@@ -21,7 +22,7 @@ const InvestorPublicProfile = lazy(() => import('./investorpublicprofile'));
 const ChatPage = lazy(() => import('./chatpage'));
 const PitchBroadcast = lazy(() => import('./pitchbroadcast'));
 const StartupPitchTerminal = lazy(() => import('./startuppitchterminal'));
-const PitchCreation = lazy(() => import('./pitchcreation')); // CORRECT (if file is lowercase)
+const PitchCreation = lazy(() => import('./pitchcreation')); 
 const AboutPage = lazy(() => import('./aboutpage'));
 const ServicePage = lazy(() => import('./servicepage'));
 const ContactPage = lazy(() => import('./contactpage'));
@@ -29,12 +30,14 @@ const ContactPage = lazy(() => import('./contactpage'));
 // Institutional Placeholder for Legal/Privacy
 const PrivacyPolicy = () => (
   <div className="min-h-screen bg-white flex flex-col items-center justify-center p-10 text-center">
-    <h1 className="text-2xl font-black uppercase italic tracking-tighter">Privacy Protocol</h1>
+    <h1 className="text-2xl font-black uppercase italic tracking-tighter text-slate-900">Privacy Protocol</h1>
     <p className="text-slate-400 text-[10px] uppercase tracking-widest mt-4 max-w-xs">
       The STAINV data encryption and privacy policy is currently under institutional review. 
       All node data remains end-to-end encrypted.
     </p>
-    <button onClick={() => window.history.back()} className="mt-10 text-[10px] font-black uppercase tracking-[0.3em] text-amber-600">Return to Registry</button>
+    <button onClick={() => window.history.back()} className="mt-10 text-[10px] font-black uppercase tracking-[0.3em] text-amber-600 hover:text-amber-700 transition-colors">
+      Return to Registry
+    </button>
   </div>
 );
 
@@ -64,6 +67,7 @@ function App() {
             background-color: #F8FAFC;
             overscroll-behavior-y: none;
             -webkit-tap-highlight-color: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
           }
           .mobile-container {
             max-width: 500px;
