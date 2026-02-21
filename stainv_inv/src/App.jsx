@@ -25,7 +25,7 @@ import PitchCreation from './pitchcreation';
 import AboutPage from './aboutpage';
 import ServicePage from './servicepage';
 import ContactPage from './contactpage';
-import InvestorShare from './InvestorShare';
+import InvestorShare from './investorshare'
 
 // Institutional Placeholder for Legal/Privacy
 const PrivacyPolicy = () => (
