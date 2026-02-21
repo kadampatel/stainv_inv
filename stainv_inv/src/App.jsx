@@ -20,7 +20,7 @@ import SearchPage from './search';
 import InvestorPublicProfile from './investorpublicprofile';
 import ChatPage from './chatpage';
 import PitchBroadcast from './pitchbroadcast';
-import StartupPitchTerminal from './StartupPitchTerminal';
+import StartupPitchTerminal from './startuppitchterminal';
 import PitchCreation from './pitchcreation';
 import AboutPage from './aboutpage';
 import ServicePage from './servicepage';
