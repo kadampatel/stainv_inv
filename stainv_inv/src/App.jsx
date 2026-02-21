@@ -23,7 +23,7 @@ const PitchBroadcast = lazy(() => import('./pitchbroadcast'));
 const StartupPitchTerminal = lazy(() => import('./startuppitchterminal'));
 const PitchCreation = lazy(() => import('./pitchcreation')); // CORRECT (if file is lowercase)
 const AboutPage = lazy(() => import('./aboutpage'));
-const ServicePage = lazy(() => import('./ServicePage'));
+const ServicePage = lazy(() => import('./servicepage'));
 const ContactPage = lazy(() => import('./contactpage'));
 
 // Institutional Placeholder for Legal/Privacy
