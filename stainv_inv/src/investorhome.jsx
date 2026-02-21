@@ -14,7 +14,7 @@ import {
 
 import { useInteractions } from './investorinteraction';
 import InvestorPost from './investorpost'; 
-import InvestorShare from './InvestorShare';
+import InvestorShare from './investorshare';
 
 // --- STRATEGIC PITCH CARD (Full Page Snap View) ---
 const StrategicPitchCard = ({ pitch, onNavigate }) => {

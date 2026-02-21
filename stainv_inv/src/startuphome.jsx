@@ -15,8 +15,8 @@ import {
 
 import { useInteractions } from './investorinteraction';
 import InvestorPost from './investorpost'; 
-import StartupPitchTerminal from './StartupPitchTerminal';
-import InvestorShare from './InvestorShare';
+import StartupPitchTerminal from './startuppitchterminal';
+import InvestorShare from './investorshare';
 
 // --- SUB-COMPONENT FOR VIEW TRACKING & ACTIONS ---
 const ViewTrackedPost = ({ post, onLike, onComment, onShare, onShareClick, openMetrics, onView }) => {

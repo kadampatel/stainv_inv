@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 
 import { useInteractions } from './investorinteraction';
-import InvestorShare from './InvestorShare';
+import InvestorShare from './investorshare';
 
 const StartupProfile = () => {
   const { id } = useParams(); 
