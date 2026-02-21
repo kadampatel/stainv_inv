@@ -25,6 +25,7 @@ import PitchCreation from './pitchcreation';
 import AboutPage from './aboutpage';
 import ServicePage from './servicepage';
 import ContactPage from './contactpage';
+import InvestorShare from './InvestorShare';
 
 // Institutional Placeholder for Legal/Privacy
 const PrivacyPolicy = () => (
@@ -111,6 +112,7 @@ function App() {
               
               {/* SECURE COMMUNICATION */}
               <Route path="/chat/:chatId" element={<ChatPage />} />
+              <Route path="/share" element={<InvestorShare />} />
             </Routes>
           </div>
         </InteractionProvider>
