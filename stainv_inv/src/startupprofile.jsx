@@ -22,7 +22,7 @@ const StartupProfile = () => {
   
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeSubTab, setActiveSubTab] = useState("profile"); // profile, edit, notifications
+  const [activeSubTab, setActiveSubTab] = useState("profile"); 
   const [contentTab, setContentTab] = useState("posts"); 
   const [notifications, setNotifications] = useState([]);
   const [myPosts, setMyPosts] = useState([]);
@@ -30,9 +30,10 @@ const StartupProfile = () => {
   const [selectedArchitect, setSelectedArchitect] = useState(null);
   const [uploading, setUploading] = useState(false);
 
-  // EXPLORER & EDIT STATES
+  // EXPLORER, ACTION & EDIT STATES
   const [selectedPostId, setSelectedPostId] = useState(null);
   const [postActionId, setPostActionId] = useState(null);
+  const [pitchActionId, setPitchActionId] = useState(null);
   const [sharePost, setSharePost] = useState(null);
   const [newPitchLink, setNewPitchLink] = useState("");
   const [newPitchTitle, setNewPitchTitle] = useState("");
@@ -53,21 +54,18 @@ const StartupProfile = () => {
         return;
       }
 
-      // 1. DATA Dossier
       const unsubscribeProfile = onSnapshot(doc(db, "startups", targetId), (snap) => {
         if (snap.exists()) setProfileData({ id: targetId, ...snap.data() });
         else if (isOwnProfile) navigate('/startupprofilesetup');
         setLoading(false);
       });
 
-      // 2. Timeline
       const qPosts = query(collection(db, "posts"), where("authorId", "==", targetId), orderBy("createdAt", "desc"));
       const unsubscribePosts = onSnapshot(qPosts, (snap) => {
         const posts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         setMyPosts(posts.filter(p => p.type !== 'strategic_pitch'));
       });
 
-      // 3. Pitches Registry
       const qPitches = query(collection(db, "pitches"), where("authorId", "==", targetId), orderBy("createdAt", "desc"));
       const unsubscribePitches = onSnapshot(qPitches, (snap) => {
         setMyPitches(snap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -84,7 +82,6 @@ const StartupProfile = () => {
     return () => {};
   }, [id, navigate, isOwnProfile]);
 
-  // EDIT LOGIC: Image Sync
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -111,7 +108,6 @@ const StartupProfile = () => {
     setLoading(false);
   };
 
-  // PITCH MANAGEMENT
   const addPitchLink = async () => {
     if (!newPitchLink || !newPitchTitle) return alert("Enter Title and Link.");
     const newPitch = { title: newPitchTitle, url: newPitchLink, id: Date.now() };
@@ -132,6 +128,17 @@ const StartupProfile = () => {
     await deleteDoc(doc(db, "posts", postId));
     setPostActionId(null);
     alert("Signal Expunged.");
+  };
+
+  const handleDeletePitch = async (pitchId) => {
+    if (!window.confirm("Delete this strategic pitch from everywhere?")) return;
+    try {
+      await deleteDoc(doc(db, "pitches", pitchId));
+      setPitchActionId(null);
+      alert("Pitch Terminated.");
+    } catch (err) {
+      alert("Error deleting pitch.");
+    }
   };
 
   useEffect(() => {
@@ -213,7 +220,6 @@ const StartupProfile = () => {
                 </div>
               </section>
 
-              {/* ARCHITECTS SECTION */}
               <div className="space-y-6 pt-6">
                 <h3 className="text-[11px] font-black uppercase tracking-[0.5em] text-slate-300 px-4">The Architects</h3>
                 <div className="grid grid-cols-2 gap-4">
@@ -231,7 +237,6 @@ const StartupProfile = () => {
                 </div>
               </div>
 
-              {/* FEED TABS */}
               <div className="pt-10 space-y-8">
                 <div className="flex justify-center gap-4 bg-slate-100/50 p-1.5 rounded-full max-w-fit mx-auto border border-slate-200">
                   <button onClick={() => setContentTab("posts")} className={`px-6 py-2 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${contentTab === 'posts' ? 'bg-black text-white shadow-lg' : 'text-slate-400'}`}>Timeline</button>
@@ -254,6 +259,25 @@ const StartupProfile = () => {
                         const hasLiked = pitch.likedBy?.includes(auth.currentUser?.uid);
                         return (
                           <div key={pitch.id} className="bg-white border border-slate-200 rounded-[3rem] overflow-hidden shadow-xl relative group">
+                             {isOwnProfile && (
+                               <div className="absolute top-6 right-6 z-10">
+                                 <button 
+                                   onClick={() => setPitchActionId(pitchActionId === pitch.id ? null : pitch.id)}
+                                   className="p-2 bg-black/20 backdrop-blur-md rounded-full text-white hover:bg-black/50 transition-all"
+                                 >
+                                   <MoreVertical size={20} />
+                                 </button>
+                                 <AnimatePresence>
+                                   {pitchActionId === pitch.id && (
+                                     <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="absolute right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 w-40">
+                                       <button onClick={() => handleDeletePitch(pitch.id)} className="w-full flex items-center gap-3 px-4 py-3 text-rose-500 text-[10px] font-black uppercase hover:bg-rose-50 rounded-xl transition-all">
+                                         <Trash2 size={16} /> Delete Pitch
+                                       </button>
+                                     </motion.div>
+                                   )}
+                                 </AnimatePresence>
+                               </div>
+                             )}
                              <img src={pitch.bgPhoto || pitch.mediaUrl} className="w-full h-64 object-cover opacity-90 transition-transform duration-700 group-hover:scale-105" alt="Banner" />
                              <div className="p-10 space-y-6">
                                 <div>
@@ -261,14 +285,21 @@ const StartupProfile = () => {
                                   <div className="flex items-center gap-2 text-amber-600 font-black text-[10px] uppercase tracking-widest"><MapPin size={14} /> {pitch.location || "Global"}</div>
                                 </div>
                                 <p className="text-lg text-slate-600 italic leading-relaxed">"{pitch.description}"</p>
-                                <div className="flex justify-between items-end pt-4">
+                                
+                                <div className="flex flex-col gap-8 pt-4 border-t border-slate-50">
                                    <div className="flex gap-10">
                                       <div><p className="text-3xl font-black text-slate-900 tracking-tighter">${pitch.totalRequired?.toLocaleString()}</p><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Required</p></div>
-                                      <div><p className="text-3xl font-black text-slate-900 tracking-tighter">${(pitch.minPerInvestor || 0).toLocaleString()}</p><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Min Ticket</p></div>
+                                      <div><p className="text-3xl font-black text-slate-900 tracking-tighter">${(pitch.minPerInvestor || pitch.minInvestment || 0).toLocaleString()}</p><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Min Ticket</p></div>
                                    </div>
-                                   <div className="flex gap-4">
-                                      <button onClick={() => handleLike(pitch)} className={`p-5 rounded-[2rem] bg-slate-50 transition-all ${hasLiked ? 'text-rose-500 scale-110 shadow-lg' : 'text-slate-400 hover:text-rose-500'}`}><Heart size={28} fill={hasLiked ? "currentColor" : "none"}/></button>
-                                      <button onClick={() => setSharePost(pitch)} className="p-5 rounded-[2rem] bg-slate-50 text-slate-400 hover:text-amber-600 transition-all shadow-sm"><Share2 size={28}/></button>
+                                   
+                                   {/* BUTTONS IN NEXT LINE FOR FULL VISIBILITY */}
+                                   <div className="flex gap-4 w-full">
+                                      <button onClick={() => handleLike(pitch)} className={`flex-1 flex items-center justify-center gap-3 py-5 rounded-[2rem] bg-slate-50 transition-all ${hasLiked ? 'text-rose-500 shadow-lg' : 'text-slate-400 hover:text-rose-500'}`}>
+                                        <Heart size={24} fill={hasLiked ? "currentColor" : "none"}/><span className="text-[10px] font-black uppercase tracking-widest">Signal Interest</span>
+                                      </button>
+                                      <button onClick={() => setSharePost(pitch)} className="flex-1 flex items-center justify-center gap-3 py-5 rounded-[2rem] bg-slate-50 text-slate-400 hover:text-amber-600 transition-all shadow-sm">
+                                        <Share2 size={24}/><span className="text-[10px] font-black uppercase tracking-widest">Distribute</span>
+                                      </button>
                                    </div>
                                 </div>
                              </div>
@@ -340,7 +371,7 @@ const StartupProfile = () => {
         </AnimatePresence>
       </main>
 
-      {/* OVERLAY: TIMELINE EXPLORER (With Delete Support) */}
+      {/* OVERLAY: TIMELINE EXPLORER */}
       <AnimatePresence>
         {selectedPostId && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[1100] bg-[#F8FAFC] overflow-y-auto">
@@ -375,7 +406,7 @@ const StartupProfile = () => {
                           <button onClick={() => handleLike(post)} className={`flex items-center gap-2 transition-all ${hasUserLiked ? 'text-rose-500 scale-110' : 'hover:text-rose-500'}`}><Heart size={26} fill={hasUserLiked ? "currentColor" : "none"} /><span className="font-black text-xs">{post.likes || 0}</span></button>
                           <button className="flex items-center gap-2"><MessageSquare size={26} /><span className="font-black text-xs">{post.commentsCount || 0}</span></button>
                        </div>
-                       <button onClick={() => setSharePost(post)} className="p-4 bg-slate-50 rounded-full hover:bg-amber-500 hover:text-white transition-all"><Share2 size={22} /></button>
+                       <button onClick={() => setSharePost(post)} className="p-4 bg-slate-50 rounded-full hover:bg-amber-500 hover:text-white transition-all shadow-sm"><Share2 size={22} /></button>
                     </div>
                   </div>
                 );
@@ -385,7 +416,7 @@ const StartupProfile = () => {
         )}
       </AnimatePresence>
 
-      {/* ARCHITECT OVERLAY & SHARE MODAL (REMAINS UNCHANGED) */}
+      {/* ARCHITECT OVERLAY */}
       <AnimatePresence>
         {selectedArchitect && (
           <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: "spring", damping: 30 }} className="fixed inset-0 z-[1000] bg-white overflow-y-auto">
