@@ -4,16 +4,22 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 // 1. Interaction Provider - The central nervous system
 import { InteractionProvider } from './investorinteraction';
 
-// 2. STATIC IMPORTS (REPLACING LAZY LOADS)
+// 2. STATIC IMPORTS
 import LandingPage from './landingpage';
 import StartupVerification from './startupverification';
 import InvestorVerification from './investorverification';
-import StartupProfileSetup from './startupprofile';
-import InvestorProfileSetup from './investorprofile';
+
+// FIX: Separated Setup Forms from Profile Dashboards
+import StartupProfileSetup from './startupprofilesetup'; 
+import InvestorProfileSetup from './investorprofilesetup'; 
+
 import InvestorHome from './investorhome';
 import StartupHome from './startuphome';
+
+// FIX: These now point to the actual profile view files
 import StartupProfile from './startupprofile';
 import InvestorProfile from './investorprofile';
+
 import StartupDetails from './startupdetails';
 import Login from './signin';
 import SearchPage from './search';
@@ -25,7 +31,7 @@ import PitchCreation from './pitchcreation';
 import AboutPage from './aboutpage';
 import ServicePage from './servicepage';
 import ContactPage from './contactpage';
-import InvestorShare from './investorshare'
+import InvestorShare from './investorshare';
 
 // Institutional Placeholder for Legal/Privacy
 const PrivacyPolicy = () => (
@@ -77,7 +83,6 @@ function App() {
         `}</style>
 
         <InteractionProvider>
-          {/* Note: Suspense is removed as it is not required for static imports */}
           <div className="relative min-h-screen w-full overflow-x-hidden">
             <Routes>
               {/* PUBLIC & FOOTER NAVIGATION ROUTES */}
@@ -92,6 +97,8 @@ function App() {
               {/* VERIFICATION & ONBOARDING FLOWS */}
               <Route path="/startupverification" element={<StartupVerification />} />
               <Route path="/investorverification" element={<InvestorVerification />} />
+              
+              {/* Corrected Onboarding Routes */}
               <Route path="/startupprofilesetup" element={<StartupProfileSetup />} />
               <Route path="/investorprofilesetup" element={<InvestorProfileSetup />} />
               
