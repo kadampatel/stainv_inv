@@ -85,18 +85,20 @@ const Login = () => {
       ]);
 
       if (invSnap.exists()) {
-        const data = invSnap.data();
-        data.profileStatus === "complete" ? navigate('/investor-home') : navigate('/investorprofilesetup');
+        const invData = invSnap.data();
+        // Standardized check for Investors
+        invData.profileStatus === "complete" ? navigate('/investor-home') : navigate('/investorprofilesetup');
       } else if (startupSnap.exists()) {
         const startupData = startupSnap.data();
-        startupData.startupName ? navigate('/startup-home') : navigate('/startupprofilesetup');
+        // Standardized check for Startups
+        startupData.profileStatus === "complete" ? navigate('/startup-home') : navigate('/startupprofilesetup');
       } else {
         alert("Dossier Mismatch. Manual authorization required.");
         navigate('/');
       }
     } catch (error) {
       console.error("Protocol Error:", error);
-      alert("Terminal Handshake Failed.");
+      alert(`Terminal Handshake Failed: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -104,7 +106,6 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-6 relative overflow-hidden font-sans antialiased">
-      {/* Abstract Structural Background (Designer Touch) */}
       <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-20">
         <div className="absolute top-[10%] right-[5%] w-[400px] h-[400px] rounded-full bg-slate-50 blur-[100px]" />
         <div className="absolute bottom-[20%] left-[10%] w-[300px] h-[300px] rounded-full bg-amber-50/40 blur-[80px]" />
@@ -116,7 +117,6 @@ const Login = () => {
         animate={{ opacity: 1, y: 0 }} 
         className="w-full max-w-md relative z-10"
       >
-        {/* Navigation Bar */}
         <div className="flex items-center justify-between mb-12 px-2">
           <button 
             onClick={() => (step === 2 ? setStep(1) : navigate(-1))} 
@@ -125,13 +125,13 @@ const Login = () => {
             <ArrowLeft size={16} />
             <span className="text-[10px] font-black uppercase tracking-[0.3em]">{step === 2 ? 'Return' : 'Registry'}</span>
           </button>
-          <img src="/stainvrb.png" alt="STAINV" className="h-25 " />
+          <img src="/stainvrb.png" alt="STAINV" className="h-16 md:h-20" />
         </div>
 
-        <div className="bg-white border border-slate-100 shadow-[0_30px_70px_-20px_rgba(0,0,0,0.04)] rounded-[48px] p-10 md:p-12">
+        <div className="bg-white border border-slate-100 shadow-[0_30px_70px_-20px_rgba(0,0,0,0.04)] rounded-[48px] p-10 md:p-12 flex flex-col items-center text-center">
           <AnimatePresence mode="wait">
             {step === 1 ? (
-              <motion.div key="step1" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+              <motion.div key="step1" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} className="w-full">
                 <div className="mb-12">
                   <div className="inline-flex p-3 bg-slate-50 rounded-2xl mb-6">
                     <ShieldCheck size={28} className="text-amber-600" />
@@ -140,7 +140,7 @@ const Login = () => {
                   <p className="text-slate-400 text-[9px] mt-4 font-black uppercase tracking-[0.4em]">Registry Handshake Required</p>
                 </div>
 
-                <form onSubmit={handleSendOtp} className="space-y-6">
+                <form onSubmit={handleSendOtp} className="space-y-6 w-full">
                   <div className="space-y-2">
                     <div className="relative group">
                       <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-amber-600 transition-colors" size={18} />
@@ -165,7 +165,7 @@ const Login = () => {
                 </form>
               </motion.div>
             ) : (
-              <motion.div key="step2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+              <motion.div key="step2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} className="w-full">
                 <div className="text-center mb-12">
                   <div className="inline-flex p-3 bg-slate-50 rounded-2xl mb-6">
                     <Lock size={28} className="text-amber-600" />
@@ -174,14 +174,16 @@ const Login = () => {
                   <p className="text-slate-400 text-[9px] font-black uppercase tracking-widest mt-4">Transmitting to: <span className="text-black italic">{email}</span></p>
                 </div>
 
-                <div className="flex justify-between gap-2 mb-12">
+                {/* MOBILE COMPACT OTP GRID */}
+                <div className="flex justify-center gap-2 md:gap-3 mb-12 w-full">
                   {otpArray.map((data, index) => (
                     <input 
                       key={index} 
                       type="text" 
+                      inputMode="numeric"
                       maxLength="1" 
                       ref={(el) => (inputRefs.current[index] = el)} 
-                      className="w-full h-14 md:h-16 text-center text-xl font-black bg-slate-50 border border-slate-100 rounded-2xl focus:border-amber-600 focus:bg-white outline-none transition-all text-slate-900 shadow-inner" 
+                      className="w-[14%] aspect-square max-w-[60px] text-center text-xl font-black bg-slate-50 border border-slate-100 rounded-2xl focus:border-amber-600 focus:bg-white outline-none transition-all text-slate-900 shadow-inner" 
                       value={data} 
                       onChange={(e) => handleOtpChange(e.target, index)}
                       onKeyDown={(e) => handleKeyDown(e, index)}
@@ -205,7 +207,6 @@ const Login = () => {
           </AnimatePresence>
         </div>
 
-        {/* Footer info */}
         <p className="text-center mt-12 text-[8px] text-slate-400 font-black uppercase tracking-[0.6em] opacity-40">
           STAINV Institutional Registry
         </p>

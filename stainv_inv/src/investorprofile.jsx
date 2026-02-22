@@ -1,16 +1,17 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { db, auth } from './firebase'; 
+import { useNavigate } from 'react-router-dom';
+import { db, auth, storage } from './firebase'; 
 import { 
   doc, getDoc, collection, query, where, onSnapshot, 
-  orderBy, deleteDoc, setDoc, serverTimestamp
+  orderBy, updateDoc, deleteDoc
 } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, MapPin, Briefcase, Star, Home, Rocket, PlusSquare, 
   MessageCircle, User, X, Settings, LogOut, Heart, Share2, MessageSquare,
-  ChevronRight, ShieldCheck, Zap, Eye, BarChart3, Send, Trash2
+  ChevronRight, ShieldCheck, Zap, Eye, BarChart3, Send, Trash2, Edit3, Camera, Save, Loader2, MoreVertical
 } from 'lucide-react';
 
 import { useInteractions } from './investorinteraction';
@@ -21,15 +22,17 @@ const InvestorProfile = () => {
   const [loading, setLoading] = useState(true);
   const [investorData, setInvestorData] = useState(null);
   const [myPosts, setMyPosts] = useState([]);
-  const [activeSubTab, setActiveSubTab] = useState("profile"); 
+  const [activeSubTab, setActiveSubTab] = useState("profile"); // profile, notifications, edit
   const [notifications, setNotifications] = useState([]);
   const [showSettings, setShowSettings] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   // EXPLORER, COMMENT & INSIGHTS STATES
   const [selectedPostId, setSelectedPostId] = useState(null);
   const [commentingPostId, setCommentingPostId] = useState(null);
   const [newComment, setNewComment] = useState("");
   const [sharePost, setSharePost] = useState(null);
+  const [postActionId, setPostActionId] = useState(null); // For the 3-dots menu
   
   const [viewingMetrics, setViewingMetrics] = useState(null);
   const [likersDetails, setLikersDetails] = useState([]);
@@ -37,6 +40,7 @@ const InvestorProfile = () => {
 
   const postRefs = useRef({});
   const scrollRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const { handleLike, submitComment, deleteComment } = useInteractions();
 
@@ -82,14 +86,62 @@ const InvestorProfile = () => {
     return () => unsubscribeAuth();
   }, [navigate]);
 
-  // AUTO-SCROLL TO SELECTED POST IN EXPLORER
+  // DELETE POST LOGIC
+  const handleDeletePost = async (postId) => {
+    if (!window.confirm("Terminate this signal? This cannot be undone.")) return;
+    try {
+      await deleteDoc(doc(db, "posts", postId));
+      setPostActionId(null);
+      alert("Signal Terminated.");
+    } catch (err) {
+      alert("Termination Failed.");
+    }
+  };
+
+  // IMAGE SYNC LOGIC
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const storageRef = ref(storage, `profiles/${auth.currentUser.uid}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      await updateDoc(doc(db, "investors", auth.currentUser.uid), { profilePhotoURL: url });
+      setInvestorData({ ...investorData, profilePhotoURL: url });
+      alert("Biometric Visual Synchronized.");
+    } catch (err) {
+      alert("Sync Failed.");
+    }
+    setUploading(false);
+  };
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const docRef = doc(db, "investors", auth.currentUser.uid);
+      await updateDoc(docRef, {
+        fullName: investorData.fullName,
+        bio: investorData.bio,
+        investorType: investorData.investorType,
+        firmName: investorData.firmName,
+        country: investorData.country
+      });
+      setActiveSubTab("profile");
+      alert("Dossier Updated.");
+    } catch (err) {
+      alert("Update Failed.");
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
     if (selectedPostId && postRefs.current[selectedPostId]) {
       postRefs.current[selectedPostId].scrollIntoView({ behavior: 'auto', block: 'start' });
     }
   }, [selectedPostId]);
 
-  // INSIGHTS LOGIC
   const openMetrics = async (post) => {
     setViewingMetrics(post);
     setFetchingMetrics(true);
@@ -101,7 +153,7 @@ const InvestorProfile = () => {
           if (!uSnap.exists()) uSnap = await getDoc(doc(db, "startups", uid));
           if (uSnap.exists()) details.push({ id: uSnap.id, ...uSnap.data() });
         }
-      } catch (e) { console.error("Stats failure:", e); }
+      } catch (e) { console.error(e); }
     }
     setLikersDetails(details);
     setFetchingMetrics(false);
@@ -141,6 +193,8 @@ const InvestorProfile = () => {
     </div>
   );
 
+  const registryHandle = auth.currentUser?.email?.split('@')[0] || 'unknown';
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 pb-40 font-sans relative antialiased">
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100 px-6 py-4 flex justify-between items-center shadow-sm">
@@ -148,24 +202,25 @@ const InvestorProfile = () => {
            <button onClick={() => navigate(-1)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400"><ArrowLeft size={20} /></button>
            <div className="flex items-center gap-2">
               <ShieldCheck size={16} className="text-amber-600" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Authorized Dossier</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Handle: <span className="text-black">{registryHandle}</span></span>
            </div>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setShowSettings(true)} className="p-2.5 hover:bg-slate-50 rounded-full text-slate-400 hover:text-amber-600 transition-all"><Settings size={20} /></button>
-          <img src="/stainvrb.png" alt="Logo" className="h-25 md:h-10 ml-2" />
+          <img src="/stainvrb.png" alt="Logo" className="h-10 ml-2" />
         </div>
       </nav>
 
       <main className="max-w-2xl mx-auto px-4 pt-8">
-        <div className="flex gap-8 mb-10 border-b border-slate-200/60 pb-4">
-          <button onClick={() => setActiveSubTab("profile")} className={`text-[10px] font-black uppercase tracking-[0.5em] pb-4 ${activeSubTab === 'profile' ? 'text-amber-600 border-b-2 border-amber-600' : 'text-slate-300'}`}>Profile</button>
-          <button onClick={() => setActiveSubTab("notifications")} className={`text-[10px] font-black uppercase tracking-[0.5em] pb-4 ${activeSubTab === 'notifications' ? 'text-amber-600 border-b-2 border-amber-600' : 'text-slate-300'}`}>Notifications</button>
+        <div className="flex gap-8 mb-10 border-b border-slate-200/60 pb-4 overflow-x-auto no-scrollbar">
+          <button onClick={() => setActiveSubTab("profile")} className={`text-[10px] font-black uppercase tracking-[0.5em] pb-4 flex-shrink-0 ${activeSubTab === 'profile' ? 'text-amber-600 border-b-2 border-amber-600' : 'text-slate-300'}`}>Dossier View</button>
+          <button onClick={() => setActiveSubTab("edit")} className={`text-[10px] font-black uppercase tracking-[0.5em] pb-4 flex-shrink-0 ${activeSubTab === 'edit' ? 'text-amber-600 border-b-2 border-amber-600' : 'text-slate-300'}`}>Edit Terminal</button>
+          <button onClick={() => setActiveSubTab("notifications")} className={`text-[10px] font-black uppercase tracking-[0.5em] pb-4 flex-shrink-0 ${activeSubTab === 'notifications' ? 'text-amber-600 border-b-2 border-amber-600' : 'text-slate-300'}`}>Notifications</button>
         </div>
 
         <AnimatePresence mode="wait">
-          {activeSubTab === "profile" ? (
-            <motion.div key="profile" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+          {activeSubTab === "profile" && (
+            <motion.div key="profile" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
               <section className="relative aspect-[4/5] w-full bg-white rounded-[3rem] border border-slate-200 shadow-2xl overflow-hidden group">
                 {investorData?.profilePhotoURL ? (
                   <img src={investorData.profilePhotoURL} className="w-full h-full object-cover transition-all duration-1000 group-hover:scale-105" alt="Profile" />
@@ -181,7 +236,7 @@ const InvestorProfile = () => {
               <section className="bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm space-y-8">
                 <div className="flex flex-wrap gap-3 text-slate-400 font-bold uppercase tracking-widest text-[9px]">
                   <span className="flex items-center gap-1.5 px-4 py-2 bg-slate-50 rounded-full border border-slate-100"><MapPin size={12} className="text-amber-600"/> {investorData?.country}</span>
-                  <span className="flex items-center gap-1.5 px-4 py-2 bg-slate-50 rounded-full border border-slate-100"><Briefcase size={12} className="text-amber-600"/> {investorData?.experienceRole}</span>
+                  <span className="flex items-center gap-1.5 px-4 py-2 bg-slate-50 rounded-full border border-slate-100"><Briefcase size={12} className="text-amber-600"/> {investorData?.experienceRole || "Investor"}</span>
                   <span className="flex items-center gap-1.5 px-4 py-2 bg-amber-50 text-amber-700 rounded-full border border-amber-100"><Star size={12} /> {investorData?.firmName}</span>
                 </div>
                 <p className="text-2xl text-slate-700 font-serif italic leading-relaxed">"{investorData?.bio || "Thesis restricted."}"</p>
@@ -202,10 +257,65 @@ const InvestorProfile = () => {
                 ))}
               </div>
             </motion.div>
-          ) : (
-            <motion.div key="notifications" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+          )}
+
+          {activeSubTab === "edit" && (
+            <motion.div key="edit" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8 pb-20">
+              <div className="flex flex-col items-center">
+                <div className="relative group cursor-pointer" onClick={() => fileInputRef.current.click()}>
+                  <div className="w-32 h-32 rounded-[2.5rem] bg-black overflow-hidden border-4 border-white shadow-2xl">
+                    {investorData?.profilePhotoURL ? (
+                      <img src={investorData.profilePhotoURL} className="w-full h-full object-cover opacity-60" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-white font-black text-2xl">{investorData?.fullName?.[0]}</div>
+                    )}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      {uploading ? <Loader2 className="animate-spin text-white" /> : <Camera className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />}
+                    </div>
+                  </div>
+                </div>
+                <input type="file" hidden ref={fileInputRef} onChange={handleImageUpload} accept="image/*" />
+                <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 mt-4">Change Visual Identity</p>
+              </div>
+
+              <form onSubmit={handleUpdateProfile} className="space-y-6">
+                <EditInput label="Full Name" value={investorData?.fullName} onChange={(e) => setInvestorData({...investorData, fullName: e.target.value})} />
+                <EditInput label="Investment Firm" value={investorData?.firmName} onChange={(e) => setInvestorData({...investorData, firmName: e.target.value})} />
+                <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Investor Type</label>
+                    <select 
+                      className="w-full bg-white border border-slate-200 rounded-2xl p-4 text-xs font-bold outline-none focus:border-amber-600 shadow-sm"
+                      value={investorData?.investorType}
+                      onChange={(e) => setInvestorData({...investorData, investorType: e.target.value})}
+                    >
+                      <option value="Angel Investor">Angel Investor</option>
+                      <option value="Venture Capital">Venture Capital</option>
+                      <option value="Private Equity">Private Equity</option>
+                      <option value="Family Office">Family Office</option>
+                      <option value="Institutional">Institutional</option>
+                    </select>
+                </div>
+                <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Bio / Thesis</label>
+                    <textarea rows="4" className="w-full bg-white border border-slate-200 rounded-2xl p-4 text-xs font-bold outline-none focus:border-amber-600 shadow-sm" value={investorData?.bio} onChange={(e) => setInvestorData({...investorData, bio: e.target.value})} />
+                </div>
+                <button type="submit" className="w-full py-5 bg-black text-white rounded-3xl font-black text-[10px] uppercase tracking-[0.3em] shadow-xl hover:bg-amber-600 transition-all flex items-center justify-center gap-2"><Save size={16} /> Synchronize Dossier</button>
+              </form>
+            </motion.div>
+          )}
+
+          {activeSubTab === "notifications" && (
+            <motion.div key="notifications" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
                {notifications.length === 0 ? <p className="py-40 text-center text-[10px] font-black uppercase text-slate-300 tracking-[0.5em]">Clear Feed</p> : 
-               notifications.map(n => <div key={n.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm font-black text-sm uppercase">{n.senderName} requested access</div>)}
+               notifications.map(n => (
+                 <div key={n.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm flex items-center justify-between">
+                   <div>
+                    <p className="text-[10px] font-black uppercase text-amber-600 tracking-widest mb-1">{n.type || 'SIGNAL'}</p>
+                    <p className="font-bold text-sm uppercase">{n.senderName} requested access</p>
+                   </div>
+                   <ChevronRight size={16} className="text-slate-200"/>
+                 </div>
+               ))}
             </motion.div>
           )}
         </AnimatePresence>
@@ -216,7 +326,7 @@ const InvestorProfile = () => {
         {selectedPostId && (
           <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25 }} className="fixed inset-0 z-[600] bg-white overflow-y-auto">
             <nav className="sticky top-0 z-[610] bg-white border-b border-slate-100 p-6 flex items-center justify-between">
-              <button onClick={() => setSelectedPostId(null)} className="p-2 bg-slate-50 rounded-full"><ArrowLeft size={20} /></button>
+              <button onClick={() => {setSelectedPostId(null); setPostActionId(null);}} className="p-2 bg-slate-50 rounded-full"><ArrowLeft size={20} /></button>
               <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Timeline Explorer</h3>
               <div className="w-10" />
             </nav>
@@ -224,7 +334,35 @@ const InvestorProfile = () => {
               {myPosts.map((post) => {
                 const hasUserLiked = post.likedBy?.includes(auth.currentUser?.uid);
                 return (
-                  <div key={post.id} ref={el => postRefs.current[post.id] = el} className="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-2xl transition-all">
+                  <div key={post.id} ref={el => postRefs.current[post.id] = el} className="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-2xl transition-all relative">
+                    {/* THREE DOTS MENU RESTORED */}
+                    <button 
+                      onClick={() => setPostActionId(postActionId === post.id ? null : post.id)} 
+                      className="absolute top-6 right-6 p-2 text-slate-400 hover:text-black z-10"
+                    >
+                      <MoreVertical size={20} />
+                    </button>
+
+                    {/* ACTION OVERLAY */}
+                    <AnimatePresence>
+                      {postActionId === post.id && (
+                        <motion.div 
+                          initial={{ opacity: 0, scale: 0.95 }} 
+                          animate={{ opacity: 1, scale: 1 }} 
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          className="absolute top-16 right-6 bg-white border border-slate-100 shadow-2xl rounded-2xl p-2 z-20 w-40"
+                        >
+                          <button 
+                            onClick={() => handleDeletePost(post.id)}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                          >
+                            <Trash2 size={16} />
+                            <span className="text-[10px] font-black uppercase tracking-widest">Delete Post</span>
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
                     <div className="p-6 flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-black text-white flex items-center justify-center font-black uppercase text-xs overflow-hidden">
                         {investorData?.profilePhotoURL ? <img src={investorData.profilePhotoURL} className="w-full h-full object-cover" /> : investorData?.fullName?.[0]}
@@ -242,7 +380,6 @@ const InvestorProfile = () => {
                          <MessageSquare size={24} />
                          <span className="font-black text-xs">{post.comments?.length || 0}</span>
                        </button>
-                       {/* INSIGHTS BUTTON RESTORED */}
                        <button onClick={() => openMetrics(post)} className="flex items-center gap-2 hover:text-amber-600 transition-all">
                          <BarChart3 size={24} />
                          <span className="text-[9px] font-black uppercase tracking-widest">Stats</span>
@@ -259,7 +396,7 @@ const InvestorProfile = () => {
         )}
       </AnimatePresence>
 
-      {/* INTEL REGISTRY (COMMENT OVERLAY) */}
+      {/* COMMENTS MODAL */}
       <AnimatePresence>
         {activeCommentPost && (
           <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25 }} className="fixed inset-0 z-[1000] bg-white flex flex-col">
@@ -269,34 +406,21 @@ const InvestorProfile = () => {
             </nav>
             <div className="flex-1 overflow-y-auto bg-[#F8FAFC]">
               <div className="p-6 bg-white border-b border-slate-100 opacity-60"><p className="text-sm font-medium italic text-slate-600 leading-relaxed line-clamp-2">"{activeCommentPost.content}"</p></div>
-              
-              <div className="grid grid-cols-2 gap-4 p-6 border-b border-slate-100 bg-white">
-                 <div className="bg-slate-50 p-4 rounded-3xl flex items-center gap-4">
-                    <Eye size={18} className="text-amber-600"/><p className="text-lg font-black">{activeCommentPost.views || 0}</p>
-                 </div>
-                 <div className="bg-slate-50 p-4 rounded-3xl flex items-center gap-4">
-                    <Heart size={18} className="text-rose-500" fill="currentColor"/><p className="text-lg font-black">{activeCommentPost.likes || 0}</p>
-                 </div>
-              </div>
-
               <div className="p-6 space-y-4">
-                {activeCommentPost.comments.map((c, idx) => {
-                  const isPostOwner = activeCommentPost.authorId === auth.currentUser?.uid;
-                  return (
+                {activeCommentPost.comments.map((c, idx) => (
                     <div key={`${activeCommentPost.id}-c-${idx}`} className="flex gap-4 items-start bg-white p-5 rounded-[1.5rem] border border-slate-200/60 shadow-sm">
-                      <div onClick={() => { setCommentingPostId(null); navigate(`/profile/${c.authorId}`); }} className="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center text-xs font-black cursor-pointer flex-shrink-0">{c.authorName?.[0]}</div>
+                      <div className="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center text-xs font-black flex-shrink-0">{c.authorName?.[0]}</div>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-center mb-1">
-                          <p onClick={() => { setCommentingPostId(null); navigate(`/profile/${c.authorId}`); }} className="text-[10px] font-black uppercase text-amber-600 tracking-widest cursor-pointer truncate">{c.authorName}</p>
-                          {(c.authorId === auth.currentUser?.uid || isPostOwner) && (
+                          <p className="text-[10px] font-black uppercase text-amber-600 tracking-widest truncate">{c.authorName}</p>
+                          {(c.authorId === auth.currentUser?.uid) && (
                             <button onClick={() => deleteComment(activeCommentPost.id, c)} className="text-slate-300 hover:text-rose-500 p-1"><Trash2 size={14}/></button>
                           )}
                         </div>
                         <p className="text-sm text-slate-800 font-bold break-words">{c.text}</p>
                       </div>
                     </div>
-                  );
-                })}
+                  ))}
                 <div ref={scrollRef} />
               </div>
             </div>
@@ -310,7 +434,7 @@ const InvestorProfile = () => {
         )}
       </AnimatePresence>
 
-      {/* METRICS MODAL RESTORED */}
+      {/* METRICS MODAL */}
       <AnimatePresence>
         {viewingMetrics && (
           <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
@@ -323,16 +447,13 @@ const InvestorProfile = () => {
                  <div className="bg-white p-6 rounded-[2rem] border border-slate-100"><p className="text-2xl font-black italic">{viewingMetrics.views || 0}</p><p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-1">Impressions</p></div>
                  <div className="bg-white p-6 rounded-[2rem] border border-slate-100"><p className="text-2xl font-black italic">{viewingMetrics.likes || 0}</p><p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-1">Interactions</p></div>
               </div>
-              <div className="flex-1 overflow-y-auto p-6 space-y-3 custom-scrollbar">
-                <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-300 mb-4 px-2">Validated Partners</p>
-                {fetchingMetrics ? (<div className="py-10 text-center animate-pulse text-[10px] font-black uppercase text-amber-600">Syncing Registry...</div>) : likersDetails.length > 0 ? (
-                  likersDetails.map(user => (
+              <div className="flex-1 overflow-y-auto p-6 space-y-3">
+                {fetchingMetrics ? (<div className="py-10 text-center animate-pulse text-[10px] font-black uppercase text-amber-600">Syncing Registry...</div>) : likersDetails.map(user => (
                     <div key={user.id} className="p-4 bg-white border border-slate-100 rounded-[1.5rem] flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-black text-white flex items-center justify-center font-black uppercase text-[10px]">{(user.profilePhotoURL || user.logo) ? <img src={user.profilePhotoURL || user.logo} className="w-full h-full object-cover" /> : user.fullName?.[0] || user.startupName?.[0]}</div>
+                      <div className="w-10 h-10 rounded-xl bg-black text-white flex items-center justify-center font-black uppercase text-[10px]">{(user.profilePhotoURL || user.logo) ? <img src={user.profilePhotoURL || user.logo} className="w-full h-full object-cover" /> : user.fullName?.[0]}</div>
                       <div><p className="text-xs font-black uppercase text-slate-900">{user.fullName || user.startupName}</p><p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{user.investorType || user.industry}</p></div>
                     </div>
-                  ))
-                ) : (<p className="py-10 text-center text-[10px] font-black uppercase text-slate-300 tracking-widest">No active interactions recorded</p>)}
+                  ))}
               </div>
             </motion.div>
           </div>
@@ -354,22 +475,32 @@ const InvestorProfile = () => {
       </AnimatePresence>
 
       <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] md:w-[450px] bg-white/80 backdrop-blur-2xl border border-slate-200 px-8 py-5 rounded-[32px] flex justify-between items-center z-50 shadow-2xl">
-        <NavIcon icon={<Home />} label="home" currentTab="profile" onClick={() => handleNavClick('home')} />
-        <NavIcon icon={<Rocket />} label="startups" currentTab="profile" onClick={() => handleNavClick('startups')} />
-        <NavIcon icon={<PlusSquare />} label="post" currentTab="profile" onClick={() => handleNavClick('post')} />
-        <NavIcon icon={<MessageCircle />} label="messages" currentTab="profile" onClick={() => handleNavClick('messages')} />
+        <NavIcon icon={<Home />} label="home" onClick={() => handleNavClick('home')} />
+        <NavIcon icon={<Rocket />} label="startups" onClick={() => handleNavClick('startups')} />
+        <NavIcon icon={<PlusSquare />} label="post" onClick={() => handleNavClick('post')} />
+        <NavIcon icon={<MessageCircle />} label="messages" onClick={() => handleNavClick('messages')} />
         <NavIcon icon={<User />} label="profile" active={true} onClick={() => handleNavClick('profile')} />
       </nav>
     </div>
   );
 };
 
-const NavIcon = ({ icon, label, currentTab, onClick, active }) => {
-  const isActive = active || label === currentTab;
+const EditInput = ({ label, value, onChange }) => (
+  <div className="flex flex-col gap-2">
+    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">{label}</label>
+    <input 
+      className="w-full bg-white border border-slate-200 rounded-2xl p-4 text-xs font-bold outline-none focus:border-amber-600 shadow-sm transition-all"
+      value={value || ""} 
+      onChange={onChange} 
+    />
+  </div>
+);
+
+const NavIcon = ({ icon, label, onClick, active }) => {
   return (
-    <button onClick={onClick} className={`flex flex-col items-center gap-1 transition-all ${isActive ? 'text-amber-600 scale-125' : 'text-slate-300 hover:text-slate-600'}`}>
-      {React.cloneElement(icon, { size: 24, strokeWidth: isActive ? 2.5 : 2 })}
-      {isActive && <motion.div layoutId="navDot" className="w-1.5 h-1.5 bg-amber-600 rounded-full mt-1" />}
+    <button onClick={onClick} className={`flex flex-col items-center gap-1 transition-all ${active ? 'text-amber-600 scale-125' : 'text-slate-300 hover:text-slate-600'}`}>
+      {React.cloneElement(icon, { size: 24, strokeWidth: active ? 2.5 : 2 })}
+      {active && <motion.div layoutId="navDot" className="w-1.5 h-1.5 bg-amber-600 rounded-full mt-1" />}
     </button>
   );
 };
